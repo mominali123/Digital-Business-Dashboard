@@ -3,20 +3,21 @@ info:
   # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: Digital Business Card Platform API
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
     description: Health operations
+  - name: cards
+    description: Business card operations
 paths:
   /healthz:
     get:
       operationId: healthCheck
       tags: [health]
       summary: Health check
-      description: Returns server health status
       responses:
         "200":
           description: Healthy
@@ -24,6 +25,227 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  /cards/me:
+    get:
+      operationId: getMyCard
+      tags: [cards]
+      summary: Get the authenticated user's card
+      responses:
+        "200":
+          description: User's card
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Card"
+        "404":
+          description: No card found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /cards:
+    post:
+      operationId: createCard
+      tags: [cards]
+      summary: Create a new card
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CardInput"
+      responses:
+        "201":
+          description: Card created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Card"
+
+  /cards/{id}:
+    put:
+      operationId: updateCard
+      tags: [cards]
+      summary: Update a card
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CardUpdate"
+      responses:
+        "200":
+          description: Card updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Card"
+        "404":
+          description: Card not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    delete:
+      operationId: deleteCard
+      tags: [cards]
+      summary: Delete a card
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Card deleted
+        "404":
+          description: Card not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /cards/{id}/publish:
+    post:
+      operationId: publishCard
+      tags: [cards]
+      summary: Publish a card and assign a username
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PublishInput"
+      responses:
+        "200":
+          description: Card published
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Card"
+        "409":
+          description: Username taken
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /cards/{id}/unpublish:
+    post:
+      operationId: unpublishCard
+      tags: [cards]
+      summary: Unpublish a card
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Card unpublished
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Card"
+
+  /cards/public/{username}:
+    get:
+      operationId: getPublicCard
+      tags: [cards]
+      summary: Get a public card by username (no auth required)
+      parameters:
+        - name: username
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Public card data
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Card"
+        "404":
+          description: Card not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /cards/{id}/qr:
+    get:
+      operationId: getCardQr
+      tags: [cards]
+      summary: Get QR code SVG for a published card
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: QR code data
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/QrCode"
+
+  /cards/{id}/export:
+    get:
+      operationId: exportCard
+      tags: [cards]
+      summary: Export card as standalone HTML
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Standalone HTML file
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HtmlExport"
+
+  /cards/check-username:
+    get:
+      operationId: checkUsername
+      tags: [cards]
+      summary: Check if a username is available
+      parameters:
+        - name: username
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Username availability
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UsernameCheck"
+
 components:
   schemas:
     HealthStatus:
@@ -34,3 +256,224 @@ components:
       required:
         - status
 
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+      required:
+        - error
+
+    CardLink:
+      type: object
+      properties:
+        type:
+          type: string
+          description: "Link type: whatsapp, phone, sms, email, linkedin, facebook, instagram, twitter, youtube, github, custom"
+        label:
+          type: ["string", "null"]
+        url:
+          type: string
+        icon:
+          type: ["string", "null"]
+          description: Emoji or icon name for custom links
+        sortOrder:
+          type: integer
+      required:
+        - type
+        - url
+
+    Card:
+      type: object
+      properties:
+        id:
+          type: integer
+        userId:
+          type: string
+        username:
+          type: ["string", "null"]
+        isPublished:
+          type: boolean
+        publishedAt:
+          type: ["string", "null"]
+        brandName:
+          type: ["string", "null"]
+        brandSubtitle:
+          type: ["string", "null"]
+        fullName:
+          type: string
+        professionalTitle:
+          type: ["string", "null"]
+        location:
+          type: ["string", "null"]
+        showStatusDot:
+          type: boolean
+        bio:
+          type: ["string", "null"]
+        profileImageUrl:
+          type: ["string", "null"]
+        accentColor:
+          type: string
+          description: CSS hex color
+        textColor:
+          type: string
+        bgColor:
+          type: string
+        fontStyle:
+          type: string
+          description: "One of: outfit, playfair, inter"
+        bgIconPack:
+          type: string
+          description: "One of: tech, real-estate, creative, medical"
+        bgIconDensity:
+          type: number
+        bgIconOpacity:
+          type: number
+        links:
+          type: array
+          items:
+            $ref: "#/components/schemas/CardLink"
+        createdAt:
+          type: string
+        updatedAt:
+          type: string
+      required:
+        - id
+        - userId
+        - isPublished
+        - fullName
+        - accentColor
+        - textColor
+        - bgColor
+        - fontStyle
+        - bgIconPack
+        - bgIconDensity
+        - bgIconOpacity
+        - showStatusDot
+        - links
+        - createdAt
+        - updatedAt
+
+    CardInput:
+      type: object
+      properties:
+        brandName:
+          type: ["string", "null"]
+        brandSubtitle:
+          type: ["string", "null"]
+        fullName:
+          type: string
+        professionalTitle:
+          type: ["string", "null"]
+        location:
+          type: ["string", "null"]
+        showStatusDot:
+          type: boolean
+        bio:
+          type: ["string", "null"]
+        profileImageUrl:
+          type: ["string", "null"]
+        accentColor:
+          type: string
+        textColor:
+          type: string
+        bgColor:
+          type: string
+        fontStyle:
+          type: string
+        bgIconPack:
+          type: string
+        bgIconDensity:
+          type: number
+        bgIconOpacity:
+          type: number
+        links:
+          type: array
+          items:
+            $ref: "#/components/schemas/CardLink"
+      required:
+        - fullName
+
+    CardUpdate:
+      type: object
+      properties:
+        brandName:
+          type: ["string", "null"]
+        brandSubtitle:
+          type: ["string", "null"]
+        fullName:
+          type: string
+        professionalTitle:
+          type: ["string", "null"]
+        location:
+          type: ["string", "null"]
+        showStatusDot:
+          type: boolean
+        bio:
+          type: ["string", "null"]
+        profileImageUrl:
+          type: ["string", "null"]
+        accentColor:
+          type: string
+        textColor:
+          type: string
+        bgColor:
+          type: string
+        fontStyle:
+          type: string
+        bgIconPack:
+          type: string
+        bgIconDensity:
+          type: number
+        bgIconOpacity:
+          type: number
+        links:
+          type: array
+          items:
+            $ref: "#/components/schemas/CardLink"
+
+    PublishInput:
+      type: object
+      properties:
+        username:
+          type: string
+          minLength: 3
+          maxLength: 30
+      required:
+        - username
+
+    QrCode:
+      type: object
+      properties:
+        svg:
+          type: string
+          description: SVG string of the QR code
+        url:
+          type: string
+          description: The public URL the QR code points to
+      required:
+        - svg
+        - url
+
+    HtmlExport:
+      type: object
+      properties:
+        html:
+          type: string
+          description: Complete standalone HTML file content
+        filename:
+          type: string
+      required:
+        - html
+        - filename
+
+    UsernameCheck:
+      type: object
+      properties:
+        available:
+          type: boolean
+        username:
+          type: string
+      required:
+        - available
+        - username
