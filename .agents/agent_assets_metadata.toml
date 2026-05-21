@@ -1,0 +1,8 @@
+uploads = []
+generated = []
+
+[[outputs]]
+id = "f6cSsoPDr7Z1k8wbBIUO9"
+uri = "file://identity-project.zip"
+type = "unspecified"
+title = "identity-project.zip"
