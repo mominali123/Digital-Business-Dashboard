@@ -1,0 +1,52 @@
+# ─────────────────────────────────────────────────────────────
+# Identity. — Netlify deployment config
+#
+# Stack:  React + Vite SPA (frontend)  +  Express via Netlify
+#         Function (backend, wrapped with serverless-http)
+#
+# Package manager: pnpm (auto-detected from pnpm-lock.yaml)
+# ─────────────────────────────────────────────────────────────
+
+[build]
+  # Install all workspace deps, then build the Vite frontend.
+  # The Netlify Function in netlify/functions/ is bundled automatically.
+  command = "pnpm install && pnpm --filter @workspace/card-platform run build"
+
+  # Vite writes to artifacts/card-platform/dist/public (see vite.config.ts)
+  publish = "artifacts/card-platform/dist/public"
+
+  # Netlify Functions source directory
+  functions = "netlify/functions"
+
+[build.environment]
+  NODE_VERSION  = "20"
+  PNPM_VERSION  = "9"
+  # Tell Vite the app is served at the root on Netlify
+  BASE_PATH = "/"
+  # Do NOT set VITE_CLERK_PROXY_URL here — on Netlify the frontend
+  # connects to Clerk's FAPI directly (no cross-domain proxy needed).
+
+# ── Required env vars ──────────────────────────────────────────
+# Set these in Netlify → Site settings → Environment variables:
+#
+#   CLERK_SECRET_KEY          your Clerk secret key
+#   CLERK_PUBLISHABLE_KEY     your Clerk publishable key
+#   VITE_CLERK_PUBLISHABLE_KEY  same value (exposed to frontend)
+#   DATABASE_URL              Postgres connection string
+#   SESSION_SECRET            random secret for sessions
+#   DEFAULT_OBJECT_STORAGE_BUCKET_ID   GCS bucket id
+#   PRIVATE_OBJECT_DIR        GCS private object directory
+#   PUBLIC_OBJECT_SEARCH_PATHS  GCS public search paths
+
+# ── API: route /api/* to the serverless Express function ──────
+[[redirects]]
+  from   = "/api/*"
+  to     = "/.netlify/functions/api"
+  status = 200
+  force  = true
+
+# ── SPA: send all other routes to index.html (wouter routing) ─
+[[redirects]]
+  from   = "/*"
+  to     = "/index.html"
+  status = 200
